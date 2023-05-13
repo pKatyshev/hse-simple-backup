@@ -72,7 +72,7 @@ public class Backup {
 
                     @Override
                     public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                        return null;
+                        return FileVisitResult.CONTINUE;
                     }
 
                     @Override

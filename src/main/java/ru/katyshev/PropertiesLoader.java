@@ -37,13 +37,13 @@ public class PropertiesLoader {
         System.out.println("Backup will be made to the dirrectory: " + properties.getProperty("destination"));
 
         // reading last backup date
-        dateFile = new File(properties.getProperty("dateFile"));
+        dateFile = new File(destination + "\\config\\lastBackupDate.json");
         backup.setDateFile(dateFile);
 
         //reading SOURCE`s from properties
         List<String> keys = properties.stringPropertyNames().stream().sorted().collect(Collectors.toList());
         Collections.sort(keys);
-        for (int i = 3; i < keys.size(); i++) {
+        for (int i = 1; i < keys.size(); i++) {
             String src = properties.getProperty(keys.get(i));
             System.out.println("add source: " + src);
             sources.add(Path.of(src));

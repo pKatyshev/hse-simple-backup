@@ -1,6 +1,4 @@
-dateFile=E:\\HSE_AUTO_BACKUP\\config\\lastBackupDate.json
-destination=E:\\HSE_AUTO_BACKUP
-report=E:\\HSE_AUTO_BACKUP\\config\\report.txt
-source1=M:\\Pomoika2
-source2=M:\\work
-source3=F:\\work
+destination=
+source1=
+source2=
+source3=

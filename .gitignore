@@ -40,3 +40,4 @@ build/
 /out
 /src/main/resources/properties.properties
 /.idea/
+/src/main/resources/lastBackupDate
