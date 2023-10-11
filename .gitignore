@@ -41,3 +41,4 @@ build/
 /src/main/resources/properties.properties
 /.idea/
 /src/main/resources/lastBackupDate
+/dependency-reduced-pom.xml

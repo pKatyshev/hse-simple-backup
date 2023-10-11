@@ -1,16 +1,34 @@
+# EXAMPLE:
+# destination=E:\\HSE_AUTO_BACKUP
+# source1=M:\\User\\WORK
+# source2=G:\\WORK
+
 destination=
 source1=
 source2=
 source3=
 
-# Root logger option
-log4j.rootLogger=INFO, file
+log4j.rootLogger=trace, file, error-file, stdout
 
-# Direct log messages to a log file
 log4j.appender.file=org.apache.log4j.RollingFileAppender
+log4j.appender.error-file=org.apache.log4j.RollingFileAppender
 
+log4j.appender.file.threshold=info
 log4j.appender.file.File=${destination}\\config\\log.txt
 log4j.appender.file.MaxFileSize=10MB
 log4j.appender.file.MaxBackupIndex=10
 log4j.appender.file.layout=org.apache.log4j.PatternLayout
-log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n
+log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p - %m%n
+
+log4j.appender.error-file.threshold=error
+log4j.appender.error-file.File=${destination}\\config\\error_log.txt
+log4j.appender.error-file.MaxFileSize=10MB
+log4j.appender.error-file.MaxBackupIndex=10
+log4j.appender.error-file.layout=org.apache.log4j.PatternLayout
+log4j.appender.error-file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %-5p - %m%n
+
+log4j.appender.stdout.threshold=trace
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.Target=System.out
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+log4j.appender.stdout.layout.ConversionPattern=%m%n

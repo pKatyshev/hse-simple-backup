@@ -1,52 +1,56 @@
 package ru.katyshev;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import lombok.Getter;
+import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
+@Getter
+@Setter
 public class PropertiesLoader {
     private Backup backup;
     private Path destination;
     private File dateFile;
     private List<Path> sources = new ArrayList<>();
     private Properties properties = new Properties();
-    private String path;
-//    private String path = "src/main/resources/properties.properties";
+    private final Logger logger = LoggerFactory.getLogger(PropertiesLoader.class);
 
-    public PropertiesLoader(Backup backup, String path) {
+    public PropertiesLoader(Backup backup) {
         this.backup = backup;
-        this.path = path;
     }
 
     public void loadProperties() {
-        try {
-            properties.load(new FileReader(path));
-        } catch (IOException e) {
-            System.out.println("couldn't read the file: " + path);
+        // load properties
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("properties.properties")){
+            properties.load(inputStream);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        //reading DESTINATION
+
+        // reading DESTINATION
         destination = Path.of(properties.getProperty("destination"));
         backup.setDestination(destination);
-        System.out.println("Backup will be made to the dirrectory: " + properties.getProperty("destination"));
+        logger.info("Backup will be made to the dirrectory: " + properties.getProperty("destination"));
 
         // reading last backup date
         dateFile = new File(destination + "\\config\\lastBackupDate.json");
         backup.setDateFile(dateFile);
 
-        //reading SOURCE`s from properties
-        List<String> keys = properties.stringPropertyNames().stream().sorted().collect(Collectors.toList());
-        Collections.sort(keys);
-        for (int i = 1; i < keys.size(); i++) {
-            String src = properties.getProperty(keys.get(i));
-            System.out.println("add source: " + src);
-            sources.add(Path.of(src));
+        // reading SOURCE`s from properties
+        List<String> keys = new ArrayList<>(properties.stringPropertyNames());
+
+        for (String key : keys) {
+            if (key.startsWith("source")) {
+                String src = properties.getProperty(key);
+                logger.info("add source: " + src);
+                sources.add(Path.of(src));
+            }
         }
         backup.setSources(sources);
     }

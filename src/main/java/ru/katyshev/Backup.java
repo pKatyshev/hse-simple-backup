@@ -1,24 +1,33 @@
 package ru.katyshev;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.log4j.PropertyConfigurator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.stream.Collectors;
 
+@Getter
+@Setter
 public class Backup {
     private PropertiesLoader propertiesLoader;
     private File dateFile;
     private Path destination;
-    private long lastBackupTime ;
+    private long lastBackupTime;
     private List<Path> sources = new ArrayList<>();
     private final List<Path> filesToCopy = new ArrayList<>();
     private final ObjectMapper mapper = new ObjectMapper();
     private long backupSize;
+    private final Logger logger = LoggerFactory.getLogger(Backup.class);
 
     public void start() {
+        PropertyConfigurator.configure(getClass().getClassLoader().getResource("properties.properties"));
+        logger.info("\nSTART APP");
         propertiesLoader.loadProperties();
         initLastBackupTime();
         searchFilesToCopy();
@@ -26,25 +35,41 @@ public class Backup {
         askAgree();
         copying();
         recordCurrentDate();
+        logger.info("STOP APP\n\n");
     }
 
-    private void printReport() {
-        System.out.println("\nREPORT\n" +
-                filesToCopy.size() + " files to copy\nBackup size: " +
-                (backupSize / 1054974) + "mb");
+    private void initLastBackupTime() {
+        try {
+            if (!Files.exists(dateFile.toPath())) {
+                if (!Files.exists(dateFile.toPath().getParent())) {
+                    Files.createDirectory(dateFile.toPath().getParent());
+                }
+                mapper.writeValue(dateFile, 0);
+                logger.info("Previously, there was no backup. Creating dateFile");
+            } else {
+                lastBackupTime = mapper.readValue(dateFile, Long.class);
+                logger.info("Date of the previous backup = " + new Date(lastBackupTime));
+            }
+        } catch (IOException ex) {
+            logger.error("Error read date from dateFile\n" + ex.getMessage());
+            throw new RuntimeException(ex);
+        }
+
     }
 
     private void searchFilesToCopy() {
+        logger.info("Start to searching files");
+
         for (Path src : sources) {
             try {
                 Files.walkFileTree(src, new FileVisitor<Path>() {
                     @Override
-                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs){
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                         return FileVisitResult.CONTINUE;
                     }
 
                     @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs){
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
 
                         if (lastBackupTime > attrs.lastModifiedTime().toMillis()) {
                             return FileVisitResult.CONTINUE;
@@ -52,7 +77,7 @@ public class Backup {
 
                         // copy project folder
                         if (file.toString().contains("\\PROJECT\\")) {
-                            if(file.toString().contains("\\PROJECT\\PREMIERE\\") && file.toString().endsWith(".mp4")) {
+                            if (file.toString().contains("\\PROJECT\\PREMIERE\\") && file.toString().endsWith(".mp4")) {
                                 return FileVisitResult.CONTINUE;
                             }
                             filesToCopy.add(file);
@@ -82,107 +107,66 @@ public class Backup {
                     }
                 });
             } catch (IOException e) {
+                logger.error("ERROR searching files\n" + e.getMessage());
                 e.printStackTrace();
             }
+        }
+    }
 
+    private void printReport() {
+        logger.info("\nREPORT\n" +
+                filesToCopy.size() + " files to copy\nBackup size: " +
+                (backupSize / 1054974) + "mb");
+    }
+
+    private void askAgree() {
+        logger.trace("\ncontinue? (y/n)");
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
+            String answer;
+            while (true) {
+                answer = reader.readLine();
+                if (answer.equalsIgnoreCase("y")) {
+                    return;
+                } else if (answer.equalsIgnoreCase("n")) {
+                    logger.info("USER STOPPED APP\n\n");
+                    System.exit(0);
+                }
+            }
+        } catch (IOException e) {
+            logger.error(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
     private void copying() {
-        try {
-            for (Path fileToCopy : filesToCopy) {
-                Path newPath = Path.of(fileToCopy.toString().replaceFirst(":", ""));
-                Path dest = destination.resolve(newPath);
 
-                if(!Files.exists(dest.getParent())) {
+        for (Path fileToCopy : filesToCopy) {
+            Path newPath = Path.of(fileToCopy.toString().replaceFirst(":", ""));
+            Path dest = destination.resolve(newPath);
+
+            try{
+                if (!Files.exists(dest.getParent())) {
                     Files.createDirectories(dest.getParent());
                 }
 
-                if(Files.exists(dest)) {
+                if (Files.exists(dest)) {
                     Files.delete(dest);
                 }
 
-                System.out.println("now copying: " + fileToCopy.toString());
+                logger.info("now copying: " + fileToCopy.toString());
                 Files.copy(fileToCopy, dest);
+
+            } catch (IOException e) {
+                logger.error("\n\nERROR copying file\n" + e.getMessage() + "\n\n");
             }
-
-        } catch (IOException e) {
-            e.printStackTrace();
         }
-    }
-
-    private void initLastBackupTime() {
-        try {
-            if (!Files.exists(dateFile.toPath())) {
-                Files.createDirectory(dateFile.toPath().getParent());
-                mapper.writeValue(dateFile, 0);
-                System.out.println("Previously, there was no backup. Creating dateFile");
-            } else {
-                lastBackupTime = mapper.readValue(dateFile, Long.class);
-                System.out.println("Date of the previous backup = " + new Date(lastBackupTime));
-            }
-        } catch (IOException ex) {
-            System.out.println("Error read date from dateFile");
-            throw new RuntimeException(ex);
-        }
-
     }
 
     private void recordCurrentDate() {
         try {
             mapper.writeValue(dateFile, new Date().getTime());
         } catch (IOException e) {
-            System.out.println("Error record current date to file");
+            logger.error("Error record current date to file\n" + e.getMessage());
         }
-    }
-
-    private boolean askAgree() {
-        System.out.println("\ncontinue? (y/n)");
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))){
-            String answer = "";
-            while (true) {
-                answer = reader.readLine();
-                if (answer.equalsIgnoreCase("y")) {
-                    return true;
-                } else if (answer.equalsIgnoreCase("n")) {
-                    System.exit(666);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    public PropertiesLoader getPropertiesLoader() {
-        return propertiesLoader;
-    }
-
-    public void setPropertiesLoader(PropertiesLoader propertiesLoader) {
-        this.propertiesLoader = propertiesLoader;
-    }
-
-    public List<Path> getSources() {
-        return sources;
-    }
-
-    public void setSources(List<Path> sources) {
-        this.sources = sources;
-    }
-
-    public Path getDestination() {
-        return destination;
-    }
-
-    public void setDestination(Path destination) {
-        this.destination = destination;
-    }
-
-    public File getDateFile() {
-        return dateFile;
-    }
-
-    public void setDateFile(File dateFile) {
-        this.dateFile = dateFile;
     }
 }
